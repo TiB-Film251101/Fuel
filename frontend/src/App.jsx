@@ -9,6 +9,28 @@ const BG = "#FAFAF8", WHITE = "#fff", INK = "#0F0F0F", PALE = "#999", LINE = "#E
 const GENRES = ["国内文芸", "翻訳文芸", "哲学・評論", "詩・短歌・俳句", "映画"];
 const SETTINGS_DEBOUNCE = 500;
 
+function amazonUrl(title, author) {
+  return `https://www.amazon.co.jp/s?k=${encodeURIComponent(`${title} ${author}`)}`;
+}
+
+function AmazonLink({ title, author }) {
+  return (
+    <a
+      href={amazonUrl(title, author)}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "block", fontSize: 11, color: PALE, fontFamily: HE,
+        letterSpacing: "0.04em", textDecoration: "none", padding: "7px 16px",
+        borderTop: `1px solid ${LINE}`, background: "#F5F5F3",
+        borderRadius: "0 0 4px 4px",
+      }}
+    >
+      ⚺ Amazon で見る
+    </a>
+  );
+}
+
 export default function App() {
   const [settings, setSettings] = useState("");
   const [selectedGenres, setSelectedGenres] = useState([]);
@@ -21,6 +43,7 @@ export default function App() {
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [toast, setToast] = useState(null);
   const settingsTimer = useRef(null);
+  const textareaRef = useRef(null);
   const resultRef = useRef(null);
 
   useEffect(() => {
@@ -57,6 +80,7 @@ export default function App() {
   };
 
   const handleRecommend = async () => {
+    textareaRef.current?.blur();
     setLoading(true);
     setError(null);
     setRecommendations([]);
@@ -64,7 +88,7 @@ export default function App() {
       const data = await recommend({ n: 5, settings, genres: selectedGenres, signals, excludeList: [] });
       setRecommendations(data);
     } catch {
-      setError("推薦の取得に失敗しました。再試行してください。");
+      setError("取得に失敗しました。再試行してください。");
     }
     setLoading(false);
   };
@@ -77,7 +101,7 @@ export default function App() {
       const data = await recommend({ n: 5, settings, genres: selectedGenres, signals, excludeList });
       setRecommendations((prev) => [...prev, ...data]);
     } catch {
-      setError("追加推薦の取得に失敗しました。再試行してください。");
+      setError("取得に失敗しました。再試行してください。");
     }
     setLoadingMore(false);
   };
@@ -146,6 +170,7 @@ export default function App() {
       {/* Settings BOX */}
       <div style={{ marginBottom: 14 }}>
         <textarea
+          ref={textareaRef}
           style={{
             fontFamily: HI, fontSize: 14, color: INK, lineHeight: 1.9, background: WHITE,
             border: `1px solid ${LINE2}`, borderRadius: 4, padding: "10px 14px",
@@ -177,10 +202,10 @@ export default function App() {
         })}
       </div>
 
-      {/* Recommend button */}
+      {/* Search button */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
         <button style={primaryBtn(!canRecommend)} onClick={handleRecommend} disabled={!canRecommend}>
-          推薦する
+          探す
         </button>
         {selectedGenres.length === 0 && (
           <span style={{ fontSize: 11, color: PALE, fontFamily: HI }}>ジャンルを1つ以上選んでください</span>
@@ -227,21 +252,24 @@ export default function App() {
           {recommendations.map((card, i) => (
             <div key={i} style={{
               background: WHITE, border: `1px solid ${LINE2}`, borderRadius: 4,
-              padding: "16px", marginBottom: 12,
+              marginBottom: 12, overflow: "hidden",
             }}>
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>{card.title}</div>
-                <div style={{ fontSize: 12, color: PALE }}>
-                  {card.author}{card.publisher && <span>　{card.publisher}</span>}
+              <div style={{ padding: "16px 16px 12px" }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>{card.title}</div>
+                  <div style={{ fontSize: 12, color: PALE }}>
+                    {card.author}{card.publisher && <span>　{card.publisher}</span>}
+                  </div>
+                </div>
+                {card.reason && (
+                  <p style={{ fontSize: 13, color: INK, lineHeight: 1.7, margin: "0 0 12px" }}>{card.reason}</p>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={ghost} onClick={() => handleBookmark(card)}>読みたい</button>
+                  <button style={ghost} onClick={() => handleSignal(card)}>もっとこういうの</button>
                 </div>
               </div>
-              {card.reason && (
-                <p style={{ fontSize: 13, color: INK, lineHeight: 1.7, margin: "0 0 12px" }}>{card.reason}</p>
-              )}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button style={ghost} onClick={() => handleBookmark(card)}>読みたい</button>
-                <button style={ghost} onClick={() => handleSignal(card)}>もっとこういうの</button>
-              </div>
+              <AmazonLink title={card.title} author={card.author} />
             </div>
           ))}
 
@@ -274,20 +302,22 @@ export default function App() {
               ? <div style={{ fontSize: 12, color: PALE, padding: "4px 0 12px" }}>まだ追加されていません</div>
               : bookmarks.map((b) => (
                 <div key={b.id} style={{
-                  display: "flex", alignItems: "flex-start", gap: 12,
-                  padding: "12px 0", borderBottom: `1px solid ${LINE}`,
+                  border: `1px solid ${LINE2}`, borderRadius: 4, marginBottom: 8, overflow: "hidden",
                 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{b.title}</div>
-                    <div style={{ fontSize: 11, color: PALE, marginBottom: 4 }}>
-                      {b.author}{b.publisher && `　${b.publisher}`}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{b.title}</div>
+                      <div style={{ fontSize: 11, color: PALE, marginBottom: 4 }}>
+                        {b.author}{b.publisher && `　${b.publisher}`}
+                      </div>
+                      {b.reason && <p style={{ fontSize: 12, color: PALE, margin: 0, lineHeight: 1.6 }}>{b.reason}</p>}
                     </div>
-                    {b.reason && <p style={{ fontSize: 12, color: PALE, margin: 0, lineHeight: 1.6 }}>{b.reason}</p>}
+                    <button
+                      onClick={() => handleDeleteBookmark(b.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: PALE, flexShrink: 0, padding: "0 4px" }}
+                    >×</button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteBookmark(b.id)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: PALE, flexShrink: 0, padding: "0 4px" }}
-                  >×</button>
+                  <AmazonLink title={b.title} author={b.author} />
                 </div>
               ))
             }

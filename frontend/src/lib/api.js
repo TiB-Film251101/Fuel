@@ -25,7 +25,7 @@ export async function recommend({ n, settings, genres, signals, excludeList }, r
           "x-fuel-secret": SHARED_SECRET,
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: "claude-sonnet-4-6",
           max_tokens: 2048,
           temperature: 0.5,
           messages: [{ role: "user", content: prompt }],
