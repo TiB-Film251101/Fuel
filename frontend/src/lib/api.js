@@ -1,4 +1,5 @@
 import { buildPrompt } from "./prompt.js";
+import { storage } from "./storage.js";
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL;
 const SHARED_SECRET = import.meta.env.VITE_FUEL_SECRET;
@@ -13,8 +14,21 @@ function extractJSON(text) {
   throw new SyntaxError("No valid JSON");
 }
 
-export async function recommend({ n, settings, genres, signals, excludeList }, retries = 2) {
-  const prompt = buildPrompt({ n, settings, genres, signals, excludeList });
+function formatBookList(items, dateKey) {
+  if (!items.length) return "該当なし";
+  return items
+    .map((b, i) => `${i + 1}. ${b.title}${b.author ? ` - ${b.author}` : ""}`)
+    .join("\n");
+}
+
+export async function recommend({ n, settings, genres, excludeList }, retries = 2) {
+  const wantToReadItems = storage.getJSON("wantToRead", []).slice(0, 10);
+  const readBooksItems = storage.getJSON("readBooks", []).slice(0, 30);
+
+  const wantToReadText = formatBookList(wantToReadItems, "savedAt");
+  const readBooksText = formatBookList(readBooksItems, "readAt");
+
+  const prompt = buildPrompt({ n, settings, genres, excludeList, wantToReadText, readBooksText });
 
   for (let i = 0; i <= retries; i++) {
     try {
